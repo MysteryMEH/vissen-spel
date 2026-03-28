@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body {
+    background: linear-gradient(to bottom, #118ab2, #073b4c); 
+    margin: 0; height: 100vh; overflow: hidden;
+    cursor: auto; font-family: 'Arial', sans-serif;
+  }
+
+  /* --- GEANIMEERDE ZEE ACHTERGROND --- */
+  .ocean { 
+    position: fixed; width: 100%; height: 100%; top: 0; left: 0; 
+    z-index: -1; overflow: hidden; pointer-events: none;
+  }
+
+  .bubble {
+    position: absolute; bottom: -50px; background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%; animation: stijgen 10s infinite ease-in;
+  }
+
+  @keyframes stijgen {
+    0% { transform: translateY(0) translateX(0); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateY(-110vh) translateX(50px); opacity: 0; }
+  }
+
+  /* --- BESTAANDE STYLES --- */
+  #mobileBlocker {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: #000; color: white; z-index: 100000;
+    display: none; flex-direction: column; justify-content: center; align-items: center;
+    text-align: center; padding: 20px;
+  }
+
+  #visnet-container {
+    position: fixed; width: 200px; height: 200px; pointer-events: none; z-index: 9999;
+    transform: translate(-50%, -50%); border: 5px solid #fff; border-radius: 50%;
+    background-image: linear-gradient(45deg, rgba(255,255,255,0.2) 1.5px, transparent 1.5px), linear-gradient(-45deg, rgba(255,255,255,0.2) 1.5px, transparent 1.5px);
+    background-size: 20px 20px; display: none;
+  }
+  #stok { position: absolute; width: 10px; height: 120px; background: #5d4037; bottom: -110px; left: 50%; transform: translateX(-50%); }
+
+  .vis { position: absolute; font-size: 55px; top: -80px; user-select: none; z-index: 500; cursor: none; }
+
+  #legendaBalk {
+    position: fixed; top: 0; left: 0; width: 100%; background-color: rgba(0, 0, 0, 0.7);
+    display: flex; justify-content: center; padding: 12px 0; z-index: 1000;
+  }
+  .legenda-item {
+    color: white; margin: 0 10px; font-size: 14px; display: flex; align-items: center;
+    gap: 5px; background: rgba(255,255,255,0.1); padding: 5px 10px; border-radius: 20px;
+  }
+
+  #scoreBord {
+    position: fixed; top: 75px; left: 20px; font-size: 30px; color: #f1c40f;
+    z-index: 1000; text-shadow: 2px 2px 4px #000;
+  }
+
+  .overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(0, 0, 0, 0.85); display: none;
+    flex-direction: column; justify-content: center; align-items: center;
+    color: white; z-index: 10000; text-align: center;
+  }
+
+  .knop {
+    padding: 15px 40px; font-size: 25px; margin: 10px; border: none;
+    border-radius: 10px; cursor: pointer; color: white; transition: 0.2s;
+    width: 300px;
+  }
+  .speel-btn { background-color: #2ecc71; }
+  .level-btn { background-color: #9b59b6; }
+  .help-btn { background-color: #f39c12; }
+  .secret-btn { background-color: #444; color: #777; }
+  .menu-btn { background-color: #3498db; }
+  .sluit-btn { background-color: #e74c3c; }
+
+  .koop-btn { background: rgba(255,255,255,0.2); border: 2px solid white; color: white; }
+  .koop-btn.actief { background-color: #2ecc71; border: none; }
+
+  #statusBericht { height: 40px; margin-bottom: 10px; font-size: 22px; font-weight: bold; }
+  input[type="text"] { padding: 12px; font-size: 20px; border-radius: 8px; border: none; margin-bottom: 15px; width: 250px; text-align: center; }
+</style>
+</head>
+<body id="gameBody">
+
+  <div class="ocean" id="oceanBg"></div>
+
+  <div id="mobileBlocker">
+    <h1>⚠️ Computer Vereist</h1>
+    <p>Dit spel kan alleen op een computer met een muis gespeeld worden.</p>
+  </div>
+
+  <div id="legendaBalk">
+    <div class="legenda-item"><span>🐟</span> 1 pt (75%)</div>
+    <div class="legenda-item"><span>🐠</span> 2 pt (15%)</div>
+    <div class="legenda-item"><span>🎣</span> 3 pt (7%)</div>
+    <div class="legenda-item"><span>🦈</span> 4 pt (3%)</div>
+  </div>
+
+  <div id="scoreBord">Punten: 0</div>
+  <div id="visnet-container"><div id="stok"></div></div>
+
+  <div id="startScherm" class="overlay" style="display: flex;">
+    <h1 style="font-size: 50px; margin-bottom: 5px;">Vissen Vangen!</h1>
+    <h2 id="startPunten" style="color: #f1c40f; margin-bottom: 30px;">Je hebt: 0 punten</h2>
+    <button class="knop speel-btn" onclick="startSpel()">Speel!</button>
+    <button class="knop level-btn" onclick="openLevels()">Levels</button>
+    <button class="knop help-btn" onclick="openHelp()">Hoe speel ik?</button>
+    <button id="secretKnop" class="knop secret-btn" onclick="openSecret()">???</button>
+  </div>
+
+  <div id="secretMenu" class="overlay">
+    <div id="statusBericht"></div>
+    <div id="secretStap1">
+      <h2>Geheim Menu</h2>
+      <button class="knop speel-btn" onclick="koopSecret()">Ja, koop voor 200</button>
+      <button class="knop sluit-btn" onclick="sluitSecret()">Nee</button>
+    </div>
+    <div id="secretStap2" style="display: none;">
+      <h2>Wachtwoord?</h2>
+      <input type="text" id="secretInput" placeholder="Typ wachtwoord...">
+      <br>
+      <button class="knop menu-btn" onclick="checkWachtwoord()">Verstuur</button>
+      <button class="knop sluit-btn" onclick="sluitSecret()">Sluiten</button>
+    </div>
+  </div>
+
+  <div id="pauzeScherm" class="overlay">
+    <h1>Gepauzeerd (ESC)</h1>
+    <button class="knop speel-btn" onclick="hervatSpel()">Verder</button>
+    <button class="knop sluit-btn" onclick="gaNaarStartscherm()">Menu</button>
+  </div>
+
+  <div id="levelMenu" class="overlay">
+    <h2>Level Winkel</h2>
+    <div id="levelLijst"></div>
+    <button class="knop sluit-btn" onclick="sluitLevels()">Terug</button>
+  </div>
+
+  <div id="helpMenu" class="overlay">
+    <h2>Hoe speel ik?</h2>
+    <p style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; line-height: 1.6;">
+      🎯 <b>Vang vissen:</b> Beweeg je net en klik op de vissen.<br>
+      ⚠️ <b>Pas op:</b> Als je een vis mist en hij raakt de bodem, verlies je <b>1 punt</b>!<br>
+      ⌨️ <b>Pauze:</b> Druk op de Pauze-knop of ESC om te stoppen.
+    </p>
+    <button class="knop sluit-btn" onclick="sluitHelp()">Begrepen!</button>
+  </div>
+
+  <button id="pauzeKnop" class="knop menu-btn" style="position:fixed; top:85px; right:20px; z-index:11000; display:none; width:120px;" onclick="pauzeerSpel()">Pauze</button>
+
+  <script>
+    // --- ACHTERGROND BUBBELS GENEREREN ---
+    function createBubbles() {
+      const ocean = document.getElementById('oceanBg');
+      for(let i = 0; i < 20; i++) {
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        const size = Math.random() * 30 + 10 + 'px';
+        bubble.style.width = size;
+        bubble.style.height = size;
+        bubble.style.left = Math.random() * 100 + '%';
+        bubble.style.animationDelay = Math.random() * 10 + 's';
+        bubble.style.animationDuration = Math.random() * 5 + 5 + 's';
+        ocean.appendChild(bubble);
+      }
+    }
+    createBubbles();
+
+    function checkDevice() {
+      const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (isTouch || isMobile) { document.getElementById('mobileBlocker').style.display = 'flex'; }
+    }
+    checkDevice();
+
+    const net = document.getElementById('visnet-container');
+    const scoreBord = document.getElementById('scoreBord');
+    const startPuntenTekst = document.getElementById('startPunten');
+    const statusBericht = document.getElementById('statusBericht');
+    
+    let punten = parseInt(localStorage.getItem('vissenPunten')) || 0;
+    let gekochteLevels = JSON.parse(localStorage.getItem('vissenLevels')) || [1];
+    let secretGekocht = localStorage.getItem('secretGekocht') === 'true';
+    let codeGebruikt = localStorage.getItem('codeGebruikt') === 'true';
+    let levelCodeGebruikt = localStorage.getItem('levelCodeGebruikt') === 'true';
+    let huidigLevel = parseInt(localStorage.getItem('actiefLevel')) || 1;
+
+    let visInterval;
+    let spelBezig = false;
+    let opPauze = false;
+
+    const levels = [{id:1,prijs:0,snelheid:5},{id:2,prijs:150,snelheid:4},{id:3,prijs:360,snelheid:3},{id:4,prijs:512,snelheid:2},{id:5,prijs:752,snelheid:1.5}];
+
+    function updateAllePunten() {
+      if (punten < 0) punten = 0;
+      let label = (punten === 1) ? " punt" : " punten";
+      scoreBord.innerHTML = "Punten: " + punten;
+      startPuntenTekst.innerHTML = "Je hebt: " + punten + label;
+      localStorage.setItem('vissenPunten', punten);
+      if(secretGekocht) {
+        document.getElementById('secretKnop').style.color = "#f1c40f";
+        document.getElementById('secretKnop').innerHTML = "Geheim Menu";
+      }
+    }
+
+    function selecteerLevel(id) {
+        huidigLevel = id;
+        localStorage.setItem('actiefLevel', id);
+        tekenLevels();
+    }
+
+    function tekenLevels() {
+      const lijst = document.getElementById('levelLijst'); lijst.innerHTML = '';
+      levels.forEach(l => {
+        const div = document.createElement('div'); div.style.background = 'rgba(255,255,255,0.1)'; div.style.padding = '10px'; div.style.margin = '5px'; div.style.borderRadius = '8px'; div.style.display = 'flex'; div.style.justifyContent = 'space-between'; div.style.width = '350px';
+        const isGekocht = gekochteLevels.includes(l.id);
+        div.innerHTML = `<span>Level ${l.id}</span>`;
+        const btn = document.createElement('button'); 
+        btn.className = 'knop koop-btn' + (isGekocht && huidigLevel === l.id ? ' actief' : ''); 
+        btn.style.width = '100px'; btn.style.fontSize = '15px'; btn.style.margin = '0';
+        btn.innerHTML = isGekocht ? (huidigLevel === l.id ? 'Actief' : 'Kies') : l.prijs + ' pt';
+        btn.onclick = () => { 
+            if (!isGekocht && punten >= l.prijs) { 
+                punten -= l.prijs; gekochteLevels.push(l.id); 
+                localStorage.setItem('vissenLevels', JSON.stringify(gekochteLevels)); 
+                updateAllePunten(); selecteerLevel(l.id);
+            } else if (isGekocht) { selecteerLevel(l.id); } 
+        };
+        div.appendChild(btn); lijst.appendChild(div);
+      });
+    }
+
+    function toonStatus(tekst, kleur) {
+      statusBericht.innerHTML = tekst;
+      statusBericht.style.color = kleur;
+      setTimeout(() => { statusBericht.innerHTML = ""; }, 3000);
+    }
+
+    function checkWachtwoord() {
+      const input = document.getElementById('secretInput').value.toLowerCase();
+      if (input === "vis") {
+        if (codeGebruikt) toonStatus("Al gebruikt!", "#f39c12");
+        else { punten += 300; codeGebruikt = true; localStorage.setItem('codeGebruikt', 'true'); updateAllePunten(); toonStatus("+300 punten!", "#2ecc71"); }
+      } 
+      else if (input === "level 2") {
+        if (levelCodeGebruikt) toonStatus("Al gebruikt!", "#f39c12");
+        else { if (!gekochteLevels.includes(2)) { gekochteLevels.push(2); localStorage.setItem('vissenLevels', JSON.stringify(gekochteLevels)); } levelCodeGebruikt = true; localStorage.setItem('levelCodeGebruikt', 'true'); toonStatus("Level 2 VRIJ!", "#2ecc71"); }
+      }
+      else toonStatus("Fout!", "#ff4d4d");
+      document.getElementById('secretInput').value = "";
+    }
+
+    function maakVis() {
+      if (opPauze) return;
+      const vis = document.createElement('div');
+      vis.className = 'vis';
+      let kans = Math.random() * 100;
+      let waarde = 1; vis.innerHTML = '🐟';
+      if (kans > 97) { vis.innerHTML = '🦈'; waarde = 4; }
+      else if (kans > 90) { vis.innerHTML = '🎣'; waarde = 3; }
+      else if (kans > 75) { vis.innerHTML = '🐠'; waarde = 2; }
+      vis.style.left = Math.random() * (window.innerWidth - 80) + 'px';
+      let snelheid = levels.find(l=>l.id===huidigLevel).snelheid;
+      vis.style.animation = `valAnimatie ${snelheid}s linear forwards`;
+      let gevangen = false;
+      vis.onmousedown = () => { if(!opPauze){ gevangen = true; punten += waarde; updateAllePunten(); vis.remove(); } };
+      document.body.appendChild(vis);
+      setTimeout(() => {
+        if (!gevangen && vis.parentNode && spelBezig && !opPauze) { punten -= 1; updateAllePunten(); vis.remove(); } 
+        else if (vis.parentNode) { vis.remove(); }
+      }, snelheid * 1000);
+    }
+
+    function startSpel() { spelBezig = true; opPauze = false; document.getElementById('startScherm').style.display = 'none'; document.getElementById('pauzeKnop').style.display = 'block'; document.body.style.cursor = 'none'; net.style.display = 'block'; visInterval = setInterval(maakVis, 1000); }
+    function pauzeerSpel() { opPauze = true; clearInterval(visInterval); document.getElementById('pauzeScherm').style.display = 'flex'; document.body.style.cursor = 'auto'; net.style.display = 'none'; document.querySelectorAll('.vis').forEach(v => v.style.animationPlayState = 'paused'); }
+    function hervatSpel() { opPauze = false; document.getElementById('pauzeScherm').style.display = 'none'; document.body.style.cursor = 'none'; net.style.display = 'block'; visInterval = setInterval(maakVis, 1000); document.querySelectorAll('.vis').forEach(v => v.style.animationPlayState = 'running'); }
+    function gaNaarStartscherm() { spelBezig = false; opPauze = false; clearInterval(visInterval); document.getElementById('pauzeScherm').style.display = 'none'; document.getElementById('startScherm').style.display = 'flex'; document.getElementById('pauzeKnop').style.display = 'none'; document.body.style.cursor = 'auto'; net.style.display = 'none'; document.querySelectorAll('.vis').forEach(v => v.remove()); }
+    function openSecret() { document.getElementById('startScherm').style.display = 'none'; document.getElementById('secretMenu').style.display = 'flex'; if (secretGekocht) { document.getElementById('secretStap1').style.display = 'none'; document.getElementById('secretStap2').style.display = 'block'; } else { document.getElementById('secretStap1').style.display = 'block'; document.getElementById('secretStap2').style.display = 'none'; } }
+    function koopSecret() { if (punten >= 200) { punten -= 200; secretGekocht = true; localStorage.setItem('secretGekocht', 'true'); updateAllePunten(); openSecret(); toonStatus("Gekocht!", "#2ecc71"); } else toonStatus("Te weinig punten!", "#ff4d4d"); }
+    function sluitSecret() { document.getElementById('secretMenu').style.display = 'none'; document.getElementById('startScherm').style.display = 'flex'; }
+    function openLevels() { document.getElementById('startScherm').style.display = 'none'; document.getElementById('levelMenu').style.display = 'flex'; tekenLevels(); }
+    function sluitLevels() { document.getElementById('levelMenu').style.display = 'none'; document.getElementById('startScherm').style.display = 'flex'; }
+    function openHelp() { document.getElementById('startScherm').style.display = 'none'; document.getElementById('helpMenu').style.display = 'flex'; }
+    function sluitHelp() { document.getElementById('helpMenu').style.display = 'none'; document.getElementById('startScherm').style.display = 'flex'; }
+
+    document.onmousemove = (e) => { net.style.left = e.clientX + 'px'; net.style.top = e.clientY + 'px'; };
+    document.onkeydown = (e) => { if (e.key === "Escape" && spelBezig) opPauze ? hervatSpel() : pauzeerSpel(); };
+    updateAllePunten();
+  </script>
+  <style> @keyframes valAnimatie { 0% { transform: translateY(0); } 100% { transform: translateY(110vh); } } </style>
+</body>
+</html>
